@@ -211,7 +211,10 @@ def export_as_csv(queryset, fields=None, header=None,  # noqa
         for obj in queryset:
             row = []
             for fieldname in fields:
-                value = get_field_value(obj, fieldname)
+                try:
+                    value = get_field_value(obj, fieldname)
+                except:
+                    value = ""
                 if isinstance(value, datetime.datetime):
                     try:
                         value = dateformat.format(value.astimezone(settingstime_zone), config['datetime_format'])
@@ -313,7 +316,15 @@ def export_as_xls2(queryset, fields=None, header=None,  # noqa
     sheet.write(row, 0, u'#', style)
     if header:
         if not isinstance(header, (list, tuple)):
-            header = [force_text(f.verbose_name) for f in queryset.model._meta.fields if f.name in fields]
+            if getattr(settings, "ADMINACTIONS_CSV_XSL_OUTPUT_RELATIONAL", False) == False:
+                header = [force_text(f.verbose_name) for f in queryset.model._meta.fields if f.name in fields]
+            else:
+                cols = [(f.name, f.verbose_name) for f in queryset.model._meta.fields]
+                for field in queryset.model._meta.fields:
+                    if field.rel:
+                        foreign_cols = [("{0}.{1}".format(field.name, f.name), "{1} ({0})".format(field.name, f.verbose_name)) for f in field.rel.to._meta.fields]
+                        cols.extend(foreign_cols)
+                header = [force_text(f[1]) for f in cols if f[0] in fields]
 
         for col, fieldname in enumerate(header, start=1):
             sheet.write(row, col, fieldname, heading_xf)

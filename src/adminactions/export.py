@@ -58,6 +58,12 @@ def base_export(modeladmin, request, queryset, title, impl, name, action_short_d
         return
 
     cols = [(f.name, f.verbose_name) for f in queryset.model._meta.fields]
+    if getattr(settings, "ADMINACTIONS_CSV_XSL_OUTPUT_RELATIONAL", False) == True:
+        for field in queryset.model._meta.fields:
+            if field.rel:
+                foreign_cols = [("{0}.{1}".format(field.name, f.name), "{0}.{1}".format(field.name, f.verbose_name)) for f in field.rel.to._meta.fields]
+                cols.extend(foreign_cols)
+
     initial = {'_selected_action': request.POST.getlist(helpers.ACTION_CHECKBOX_NAME),
                'select_across': request.POST.get('select_across') == '1',
                'action': get_action(request),
